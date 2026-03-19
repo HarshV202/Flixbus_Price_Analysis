@@ -1,136 +1,266 @@
-# Flixbus_Price_Analysis
-📌 Overview
+# Bus Pricing Analysis System
 
-This project analyzes how Flixbus is priced relative to competitors and identifies pricing inefficiencies using a data-driven approach.
+A Python-based pipeline that identifies comparable competitor buses for every Flixbus listing and flags pricing issues — automatically, daily, at scale.
 
-It combines:
+---
 
-Similar bus matching
+## Overview
 
-Price benchmarking (WAP)
+This system solves two problems:
 
-Intelligent price flagging
+1. **Similar Bus Identification** — For each Flixbus listing, find a pool of genuinely comparable competitor buses using a three-tier similarity framework
+2. **Price Flagging** — Compare Flixbus prices against the peer median and flag listings that are too high or too low, accounting for demand and platform visibility signals
 
-Automated reporting pipeline
+**Dataset:** 850,000+ rows of route-level bus listings across multiple routes and departure dates  
+**Operator:** Flixbus (identified by operator name in dataset)  
+**Benchmark metric:** Weighted Average Price (WAP)
 
-🎯 Objective
+---
 
-Identify comparable buses for each listing
+## Key Results
 
-Benchmark prices against competitors
+| Metric | Value |
+|--------|-------|
+| Flixbus listings processed | 31,110 |
+| Listings with comparable pool | 24,666 (79.3%) |
+| Comparable pairs generated | 201,989 |
+| Median WAP vs peer median | -13.6% |
+| Flag rate | 53.6% |
+| Flagged TOO LOW | 8,623 |
+| Flagged TOO HIGH | 4,606 |
+| CRITICAL flags | 5,808 |
 
-Detect overpriced and underpriced listings
+> **Key finding:** Flixbus is systematically underpriced — TOO LOW flags outnumber TOO HIGH 2:1, with a median price 13.6% below comparable peers.
 
-Provide actionable insights for pricing optimization
+---
 
-📂 Dataset
+## Project Structure
 
-~850,000+ rows
+```
+pricing_pipeline/
+    dataset.xlsx                    ← daily input file
+    similarity.py                   ← Task 1: similar bus matching
+    flagging.py                     ← Task 2: price flagging
+    build_final_workbook.py         ← consolidates outputs into final Excel
+    run_pipeline.py                 ← master script (calls all three)
+    outputs/
+        pricing_analysis_YYYY-MM-DD.xlsx
+    logs/
+        pipeline_YYYY-MM-DD.log
+```
 
-Multi-route, multi-date bus listings
+---
 
-Key Features:
+## Installation
 
-Price (WAP)
+**Requirements:** Python 3.8+
 
-Route & Date
+```bash
+pip install pandas openpyxl
+```
 
-Departure Time & Duration
+---
 
-Bus Type (AC / Sleeper / Seater)
+## Usage
 
-Ratings & Reviews
+### Run the full pipeline
 
-Seat Availability (Load Factor)
+Place `dataset.xlsx` in the project folder, then run:
 
-Search Ranking Position (SRP)
+```bash
+python run_pipeline.py
+```
 
-🧠 Approach
-🔍 Similar Bus Matching
+This calls all three scripts in sequence and produces `pricing_analysis_final.xlsx`.
 
-3-tier framework:
+### Run individual steps
 
-Hard Filters: Route, Date, Product Type
+```bash
+# Step 1 — similar bus matching
+python similarity.py
 
-Soft Filters: Time (±90 mins), Duration (±45 mins)
+# Step 2 — price flagging (requires similarity_output.xlsx)
+python flagging.py
 
-Quality Filters: Rating (±0.5), Reviews ≥ 50
+# Step 3 — build consolidated Excel report
+python build_final_workbook.py
+```
 
-💰 Price Benchmarking
+---
 
-Uses Weighted Average Price (WAP)
+## Output
 
-Computes peer median price for comparison
+`pricing_analysis_final.xlsx` contains five sheets:
 
-🚨 Price Flagging
+| Sheet | Contents |
+|-------|----------|
+| Sheet 1 – Flagging Output | Every Flixbus listing with flag status, direction, severity, confidence, dynamic thresholds, load factor, and rank signal. Colour-coded: red = TOO HIGH, amber = TOO LOW, green = OK |
+| Sheet 2 – Logic Explanation | Full written documentation of the similarity and flagging logic with all assumptions |
+| Sheet 3 – Comparables | Every matched competitor pair with delta values for departure time, duration, and rating |
+| Sheet 4 – Summary Stats | Top-level flag counts and direction × severity breakdown |
+| Sheet 5 – Automation Plan | MVP automation plan with scheduling options and folder structure |
 
-A listing is flagged only if:
+---
 
-Deviation > 15%
+## How It Works
 
-AND difference > ₹75
+### Task 1 — Similar Bus Identification
 
-⚙️ Dynamic Adjustments
+Competitors are matched to each Flixbus listing using a three-tier framework:
 
-High demand (load) → allows higher pricing
+**Tier 1 — Hard Filters (exact match)**
 
-Top SRP rank → allows premium pricing
+| Field | Rationale |
+|-------|-----------|
+| Route Number | Cannot compare prices across different origin-destination pairs |
+| Departure Date | Different dates reflect different demand conditions |
+| Product Key (AC + Bus Type) | AC_Sleeper, AC_Mixed, NonAC_Seater etc. — customers don't cross-shop across these |
 
-📊 Severity Levels
+**Tier 2 — Soft Filters (range match)**
 
-CRITICAL → Immediate action
+| Field | Tolerance | Rationale |
+|-------|-----------|-----------|
+| Departure Time | ± 90 min | Travellers compare buses within a realistic ±90 min window |
+| Journey Duration | ± 45 min | Beyond 45 min, route differences justify independent pricing |
 
-HIGH → Strong mispricing
+**Tier 3 — Quality Band**
 
-MEDIUM → Moderate deviation
+| Field | Condition | Rationale |
+|-------|-----------|-----------|
+| Rating | ± 0.5 stars | Higher-rated operators legitimately command a premium |
+| Reviews | ≥ 50 | Filters out operators without sufficient credibility |
 
-LOW → Minor variation
+**Performance:** Uses a single vectorized pandas `merge` on Tier 1 keys instead of a Python loop — runs in ~3–5 minutes on 850k rows vs ~45 minutes with a loop.
 
-⚙️ Pipeline
-Data → Preprocessing → Similarity Matching → Flagging → Report Generation
+---
 
-Fully automated
+### Task 2 — Price Flagging
 
-Runs in ~3–5 minutes
+A flag is raised only when **both** conditions are simultaneously breached:
 
-Handles 850k+ rows efficiently
+```
+|WAP Diff %| > threshold  AND  |WAP Diff ₹| > ₹75
+```
 
-🛠 Tech Stack
+The `₹75` absolute floor prevents flagging trivial differences on cheap buses.
 
-Python
+**Dynamic Thresholds**
 
-pandas
+The base threshold of 15% widens based on two contextual signals:
 
-openpyxl
+| Signal | Condition | Adjustment | Logic |
+|--------|-----------|------------|-------|
+| Load Factor | > 80% occupancy | +10% on upper band | High demand justifies higher pricing |
+| Load Factor | < 30% occupancy | +10% on lower band | Low occupancy — discounting may be intentional |
+| SRP Rank | Top 20% on route/date | +5% on upper band | Visibility premium justifies modest price premium |
 
-📊 Key Results
+Adjustments stack — a top-20% ranked bus with 85% load gets an upper threshold of **30%** before being flagged.
 
-~79% listings matched with comparables
+**Severity**
 
-53.6% listings flagged
+Based on how far the deviation exceeds the threshold (not the raw deviation):
 
-Underpricing is 2× more frequent than overpricing
+| Severity | Excess beyond threshold | Action |
+|----------|------------------------|--------|
+| CRITICAL | > 30% | Immediate review |
+| HIGH | 15% – 30% | Pricing action recommended |
+| MEDIUM | 5% – 15% | Review and consider adjustment |
+| LOW | 0% – 5% | Monitor |
 
-📁 Project Structure
-├── data/
-│   └── dataset.xlsx
-├── src/
-│   ├── similarity.py
-│   ├── flagging.py
-│   ├── run_pipeline.py
-│   └── build_final_workbook.py
-├── output/
-│   └── pricing_analysis_final.xlsx
-├── README.md
-🚀 Future Improvements
+**Confidence**
 
-Cloud deployment (AWS / GCP)
+| Level | Pool Size | Meaning |
+|-------|-----------|---------|
+| HIGH | ≥ 5 buses | Statistically reliable — act directly |
+| MEDIUM | 3 – 4 buses | Directionally reliable — treat with caution |
+| LOW | < 3 buses | Review manually before acting |
 
-Database integration (PostgreSQL)
+---
 
-Dashboard (Power BI / Streamlit)
+## Automation
 
-👨‍💻 Author
+### Local — Windows Task Scheduler
 
-Harsh Verma
-NSUT Delhi | Data Analyst Aspirant
+Create `run_pipeline.bat`:
+
+```bat
+cd C:\pricing_pipeline
+python similarity.py && python flagging.py && python build_final_workbook.py
+```
+
+Point Task Scheduler to this file, set trigger to daily at 06:00.
+
+### Local — Linux Cron
+
+```bash
+# crontab -e
+0 6 * * * cd /opt/pricing_pipeline && python3 run_pipeline.py >> logs/pipeline.log 2>&1
+```
+
+### Cloud
+
+| Platform | Trigger | Notes |
+|----------|---------|-------|
+| AWS Lambda + EventBridge | Scheduled rule | Serverless, output to S3 |
+| GitHub Actions | Workflow cron | Free runner, output to SharePoint or S3 |
+| Azure Functions | Timer trigger | Integrates with Power BI |
+
+---
+
+## Key Parameters
+
+All similarity and flagging thresholds are defined as constants at the top of each script — easy to tune without touching logic:
+
+```python
+# similarity.py
+DEP_WINDOW_MIN = 90    # ± minutes for departure time match
+DUR_TOLERANCE  = 45    # ± minutes for journey duration match
+MIN_REVIEWS    = 50    # minimum reviews for competitor credibility
+RATING_WINDOW  = 0.5   # ± stars for quality band match
+
+# flagging.py
+BASE_PCT_THRESHOLD  = 15.0   # % deviation to trigger flag
+BASE_ABS_THRESHOLD  = 75.0   # ₹ absolute deviation to trigger flag
+LOAD_HIGH           = 0.80   # above this → high demand adjustment
+LOAD_LOW            = 0.30   # below this → low demand adjustment
+LOAD_ADJUSTMENT     = 10.0   # % added to threshold for load signal
+RANK_ADJUSTMENT     = 5.0    # % added to upper threshold for top-20% rank
+```
+
+---
+
+## Assumptions
+
+| Assumption | Detail |
+|------------|--------|
+| Operator identity | Flixbus identified by operator name in `Operator` column |
+| Boolean encoding | `Is AC`, `Is Seater`, `Is Sleeper` stored as `1.0 / NaN` floats from Excel |
+| Departure Time format | Stored as `datetime.time` objects — converted to minutes since midnight |
+| Load factor | No dedicated column — computed as `(Total Seats - Available Seats) / Total Seats` |
+| Duplicate handling | Same bus appears multiple times across extraction snapshots — deduplicated before matching and before peer stats |
+| Rating window | Set to ±0.5 after diagnostic analysis showed ±0.3 cut the comparable pool too aggressively on the real dataset |
+| SRP rank top 20% | Computed per route per date from total listing count in SRP Rank string (e.g. `"17/165"` → top 20% = rank ≤ 33) |
+
+---
+
+## Diagnostics
+
+If the Comparables sheet comes back empty, run the included diagnostic scripts to identify the issue:
+
+```bash
+python diagnose.py    # checks column formats, dtypes, sample values
+python diagnose2.py   # tests merge at each Tier 1 key individually
+python diagnose3.py   # traces how many rows survive each filter step
+```
+
+---
+
+## AI Tool Usage
+
+This project was developed with Claude (Anthropic) as a coding and structuring assistant. AI contributed to framework design, code generation, data diagnostics, and performance optimisation. All key decisions — field selection, threshold values, deduplication logic — were made by the analyst. AI served as a tool, not a decision-maker.
+
+---
+
+## License
+
+For internal use only. Not for distribution.
