@@ -1,43 +1,39 @@
 # Flixbus_Price_Analysis
-A data-driven pricing analysis system that compares Flixbus listings with similar competitors using a multi-tier matching framework. It benchmarks prices with Weighted Average Price (WAP), flags mispriced listings using dynamic thresholds based on demand and visibility, and automates the pipeline to generate actionable insights at scale.
-🚌 Bus Pricing Analysis & Automation System
 📌 Overview
 
-This project analyzes bus listing data to evaluate how Flixbus is priced relative to competitors and identifies pricing inefficiencies using a data-driven approach.
+This project analyzes how Flixbus is priced relative to competitors and identifies pricing inefficiencies using a data-driven approach.
 
 It combines:
 
-Similarity-based competitor matching
+Similar bus matching
 
-Statistical price benchmarking
+Price benchmarking (WAP)
 
-Dynamic pricing flagging
+Intelligent price flagging
 
-End-to-end automation pipeline
+Automated reporting pipeline
 
 🎯 Objective
 
-To build a system that:
+Identify comparable buses for each listing
 
-Identifies comparable buses for each Flixbus listing
+Benchmark prices against competitors
 
-Benchmarks prices using market data
+Detect overpriced and underpriced listings
 
-Flags overpriced and underpriced listings
-
-Generates actionable insights for pricing optimization
+Provide actionable insights for pricing optimization
 
 📂 Dataset
 
-~850,000+ rows of bus listings
+~850,000+ rows
 
-Multi-route and multi-date data
+Multi-route, multi-date bus listings
 
 Key Features:
 
-Price (Weighted Average Price - WAP)
+Price (WAP)
 
-Route & Departure Date
+Route & Date
 
 Departure Time & Duration
 
@@ -50,37 +46,23 @@ Seat Availability (Load Factor)
 Search Ranking Position (SRP)
 
 🧠 Approach
-1. Similar Bus Matching
+🔍 Similar Bus Matching
 
-A 3-tier filtering framework ensures only relevant competitors are selected:
+3-tier framework:
 
-Tier 1 (Hard Filters):
+Hard Filters: Route, Date, Product Type
 
-Route
+Soft Filters: Time (±90 mins), Duration (±45 mins)
 
-Date
+Quality Filters: Rating (±0.5), Reviews ≥ 50
 
-Product Type (AC + Bus Type)
+💰 Price Benchmarking
 
-Tier 2 (Soft Filters):
+Uses Weighted Average Price (WAP)
 
-Departure Time (±90 mins)
+Computes peer median price for comparison
 
-Duration (±45 mins)
-
-Tier 3 (Quality Filters):
-
-Rating (±0.5)
-
-Minimum 50 reviews
-
-2. Price Benchmarking
-
-Uses Weighted Average Price (WAP) instead of min/max price
-
-Calculates peer median price for each listing
-
-3. Price Flagging Logic
+🚨 Price Flagging
 
 A listing is flagged only if:
 
@@ -88,72 +70,46 @@ Deviation > 15%
 
 AND difference > ₹75
 
-This avoids noise and ensures meaningful flags.
+⚙️ Dynamic Adjustments
 
-4. Dynamic Adjustments
+High demand (load) → allows higher pricing
 
-Thresholds adapt based on:
+Top SRP rank → allows premium pricing
 
-Load Factor (Demand)
+📊 Severity Levels
 
-High load → allows higher price
+CRITICAL → Immediate action
 
-Low load → allows lower price
+HIGH → Strong mispricing
 
-Search Ranking (Visibility)
+MEDIUM → Moderate deviation
 
-Top-ranked buses can justify premium pricing
+LOW → Minor variation
 
-5. Severity Levels
-Severity	Description
-CRITICAL	Immediate action required
-HIGH	Strong mispricing
-MEDIUM	Moderate deviation
-LOW	Minor variation
-6. Confidence Levels
-Confidence	Comparable Count
-HIGH	≥ 5
-MEDIUM	3–4
-LOW	< 3
-⚙️ Pipeline Architecture
-Daily Dataset → Data Preparation → Similarity Matching → Price Flagging → Report Generation
-Steps:
+⚙️ Pipeline
+Data → Preprocessing → Similarity Matching → Flagging → Report Generation
 
-Data ingestion (Excel input)
+Fully automated
 
-Feature engineering (time, load, product key)
+Runs in ~3–5 minutes
 
-Vectorized similarity matching (pandas)
-
-Price flagging with dynamic thresholds
-
-Excel report generation
-
-⏱ Runtime: ~3–5 minutes for 850k+ rows
+Handles 850k+ rows efficiently
 
 🛠 Tech Stack
 
-Python 3
+Python
 
-pandas (data processing)
+pandas
 
-openpyxl (Excel reporting)
+openpyxl
 
 📊 Key Results
 
-~79% listings had valid comparables
+~79% listings matched with comparables
 
 53.6% listings flagged
 
 Underpricing is 2× more frequent than overpricing
-
-Multiple critical pricing gaps identified
-
-🚀 Performance Optimization
-
-Replaced row-by-row loops with vectorized pandas merge
-
-Reduced runtime from ~60 mins → ~5 mins
 
 📁 Project Structure
 ├── data/
@@ -166,30 +122,15 @@ Reduced runtime from ~60 mins → ~5 mins
 ├── output/
 │   └── pricing_analysis_final.xlsx
 ├── README.md
-🔄 Automation
+🚀 Future Improvements
 
-Fully automated pipeline
+Cloud deployment (AWS / GCP)
 
-Can be scheduled via cron / task scheduler
+Database integration (PostgreSQL)
 
-Optional integrations:
-
-Email alerts
-
-Slack notifications
-
-🔮 Future Improvements
-
-Deploy on cloud (AWS / GCP)
-
-Store data in PostgreSQL / Data Warehouse
-
-Build dashboard (Power BI / Streamlit)
-
-Real-time pricing recommendations
+Dashboard (Power BI / Streamlit)
 
 👨‍💻 Author
 
 Harsh Verma
-Mechanical Engineering, NSUT Delhi
-Aspiring Data Analyst
+NSUT Delhi | Data Analyst Aspirant
