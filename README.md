@@ -254,14 +254,3 @@ python diagnose2.py   # tests merge at each Tier 1 key individually
 python diagnose3.py   # traces how many rows survive each filter step
 ```
 
----
-
-## AI Tool Usage
-
-This project was developed with Claude (Anthropic) as a coding and structuring assistant. AI contributed to framework design, code generation, data diagnostics, and performance optimisation. All key decisions — field selection, threshold values, deduplication logic — were made by the analyst. AI served as a tool, not a decision-maker.
-
----
-
-## License
-
-For internal use only. Not for distribution.
