@@ -1,7 +1,6 @@
 # Bus Pricing Analysis System
 
 A Python-based pipeline that identifies comparable competitor buses for every Flixbus listing and flags pricing issues — automatically, daily, at scale.
-Dataset link: https://docs.google.com/spreadsheets/d/1Qn8nIx-NFaGm3eEH_m7ke0wyI7dVx2Wz/edit?usp=drive_link&ouid=101250888891140742344&rtpof=true&sd=true
 
 ---
 
